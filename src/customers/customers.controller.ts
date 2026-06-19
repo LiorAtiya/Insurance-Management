@@ -39,6 +39,11 @@ export class CustomersController {
     return this.customersService.update(id, dto);
   }
 
+  @Patch(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.customersService.restore(id);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   softDelete(@Param('id') id: string) {

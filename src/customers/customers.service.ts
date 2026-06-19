@@ -7,22 +7,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { QueryCustomersDto } from './dto/query-customers.dto';
-import { Customer, Prisma } from '@prisma/client';
+import { Customer, Prisma, PolicyStatus } from '@prisma/client';
 
 @Injectable()
 export class CustomersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateCustomerDto): Promise<Customer> {
-    const existing = await this.prisma.customer.findUnique({
-      where: { nationalId: dto.nationalId },
-    });
-    if (existing) {
-      throw new ConflictException(
-        `Customer with nationalId ${dto.nationalId} already exists`,
-      );
-    }
-
     return this.prisma.customer.create({ data: dto });
   }
 
@@ -34,10 +25,15 @@ export class CustomersService {
     }
 
     if (query.search) {
-      where.OR = [
-        { firstName: { contains: query.search, mode: 'insensitive' } },
-        { lastName: { contains: query.search, mode: 'insensitive' } },
-        { nationalId: { contains: query.search } },
+      where.AND = [
+        ...(where.AND as Prisma.CustomerWhereInput[] ?? []),
+        {
+          OR: [
+            { firstName: { contains: query.search, mode: 'insensitive' } },
+            { lastName: { contains: query.search, mode: 'insensitive' } },
+            { nationalId: { contains: query.search } },
+          ],
+        },
       ];
     }
 
@@ -60,11 +56,27 @@ export class CustomersService {
     return this.prisma.customer.update({ where: { id }, data: dto });
   }
 
+  async restore(id: string): Promise<Customer> {
+    const customer = await this.findOne(id);
+    if (customer.isActive) {
+      throw new ConflictException(`Customer ${id} is already active`);
+    }
+    return this.prisma.customer.update({
+      where: { id },
+      data: { isActive: true, deletedAt: null },
+    });
+  }
+
   async softDelete(id: string): Promise<void> {
     await this.findOne(id);
 
+    // Only truly ACTIVE policies block deletion — EXPIRED (endDate < now) do not
     const activeCount = await this.prisma.policy.count({
-      where: { customerId: id, status: 'ACTIVE' },
+      where: {
+        customerId: id,
+        status: PolicyStatus.ACTIVE,
+        endDate: { gt: new Date() },
+      },
     });
 
     if (activeCount > 0) {

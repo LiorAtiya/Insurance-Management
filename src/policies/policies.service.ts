@@ -144,8 +144,8 @@ export class PoliciesService {
 
     let seq = 1;
     if (last) {
-      const parts = last.policyNumber.split('-');
-      seq = parseInt(parts[2], 10) + 1;
+      const match = last.policyNumber.match(/POL-\d{4}-(\d+)/);
+      seq = match ? parseInt(match[1], 10) + 1 : 1;
     }
 
     return `${prefix}${String(seq).padStart(5, '0')}`;

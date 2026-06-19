@@ -65,7 +65,8 @@ Policy
   customerId   UUID (FK → Customer)
 ```
 
-### Layers
+### Layers & Separation of Concerns
+
 ```
 HTTP Request
     ↓
@@ -78,7 +79,17 @@ PrismaService (DAL — single DB client, globally provided)
 PostgreSQL
 ```
 
-`PolicyStatusResolver` is a dedicated injectable that computes the effective status from `endDate` and DB status. Used by `PoliciesService` on every read — no cron, no write-back.
+Each layer has a single responsibility and strict boundaries:
+
+| Layer | Responsibility | What it does NOT do |
+|---|---|---|
+| **Controller** | Extract params/body, call service, return response | No business logic, no DB access |
+| **Service** | Business rules, state transitions, integrity checks | No HTTP knowledge, no raw SQL |
+| **PolicyStatusResolver** | Compute effective policy status from `endDate` | No DB queries, no side effects |
+| **PrismaService** | DB connection lifecycle | No business rules |
+| **PrismaExceptionFilter** | Map DB errors (P2002→409, P2025→404) to HTTP | No domain knowledge |
+
+`PolicyStatusResolver` is extracted into its own injectable because the same status-computation rule is applied in every read path (`findAll`, `findOne`, `update`, `cancel`). Keeping it in one place ensures a single point of change if the business rule ever evolves — a direct application of SRP.
 
 ---
 
@@ -92,6 +103,7 @@ PostgreSQL
 | `GET` | `/customers` | List customers (optional: `?search=&isActive=`) |
 | `GET` | `/customers/:id` | Get one customer |
 | `PATCH` | `/customers/:id` | Update customer details |
+| `PATCH` | `/customers/:id/restore` | Restore a soft-deleted customer |
 | `DELETE` | `/customers/:id` | Soft-delete customer |
 
 ### Policies
@@ -158,47 +170,74 @@ Prisma constraint errors (P2002 unique, P2025 not found) are caught globally by 
 
 ## Setup & Running
 
-### Prerequisites
-- Node.js 18+
-- Docker + Docker Compose
+Two modes available: **fully containerized** (Docker) or **local** (Node on host + Docker for DB only).
 
-### 1. Clone & install
+---
+
+### Option A — Full Docker (recommended for quick start)
+
+**Prerequisites:** Docker + Docker Compose only. No Node.js required.
+
+```bash
+git clone <repo-url>
+cd insurance-management
+
+# Build and start both API + Postgres
+docker-compose up --build
+```
+
+API available at `http://localhost:3000`
+
+The API container automatically runs `prisma migrate deploy` on startup.
+
+To seed sample data:
+```bash
+docker-compose exec api npm run prisma:seed
+```
+
+To stop:
+```bash
+docker-compose down
+```
+
+---
+
+### Option B — Local (Node on host + Docker for DB)
+
+**Prerequisites:** Node.js 18+, Docker + Docker Compose.
+
+#### 1. Clone & install
 ```bash
 git clone <repo-url>
 cd insurance-management
 npm install
 ```
 
-### 2. Environment
-```bash
-cp .env.example .env
-# Default values work out of the box with docker-compose
-```
-
-`.env` content:
+#### 2. Environment
+Create a `.env` file in the project root:
 ```
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/insurance_db"
 PORT=3000
 ```
 
-### 3. Start the database
+#### 3. Start the database
 ```bash
-docker-compose up -d
+docker-compose up -d postgres
 ```
 
-### 4. Run migrations & generate Prisma client
+#### 4. Run migrations & generate Prisma client
 ```bash
 npx prisma migrate dev --name init
 npx prisma generate
 ```
 
-### 5. (Optional) Seed sample data
+#### 5. (Optional) Seed sample data
 ```bash
 npm run prisma:seed
 # Creates: 2 customers, 3 policies (ACTIVE car, ACTIVE health, CANCELLED life)
 ```
 
-### 6. Start the API
+#### 6. Start the API
 ```bash
 # Development (watch mode)
 npm run start:dev
@@ -209,10 +248,25 @@ npm run build && npm run start:prod
 
 API available at `http://localhost:3000`
 
-### 7. Run tests
+---
+
+### Run tests
+
 ```bash
+# Unit tests (21 tests — PolicyStatusResolver + CustomersService)
 npm test
+
+# E2E tests (53 tests — full API flow, validation, security, performance)
+# Requires: Docker running + API not already listening on port 3000
+npm run test:e2e
 ```
+
+Test coverage includes:
+- Happy path — full customer + policy lifecycle
+- Validation — nationalId format, premium > 0, date ordering, enum values
+- Error cases — 400 / 404 / 409 across all endpoints
+- Security — SQL injection, XSS payload handling, unknown field rejection, malformed UUIDs
+- Performance — all key endpoints respond within 500ms
 
 ---
 

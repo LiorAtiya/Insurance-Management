@@ -69,6 +69,27 @@ describe('Insurance Management API (e2e)', () => {
       expect(res.status).toBe(400);
     });
 
+    it('returns 400 when nationalId contains letters', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/customers')
+        .send({ nationalId: 'ABCDEFGHI', firstName: 'Bad', lastName: 'Input' });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when nationalId contains special characters', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/customers')
+        .send({ nationalId: '12345678!', firstName: 'Bad', lastName: 'Input' });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when nationalId is 10 digits (too long)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/customers')
+        .send({ nationalId: '1234567890', firstName: 'Bad', lastName: 'Input' });
+      expect(res.status).toBe(400);
+    });
+
     it('returns 400 when unknown field is sent', async () => {
       const res = await request(app.getHttpServer())
         .post('/customers')
@@ -170,6 +191,20 @@ describe('Insurance Management API (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post(`/customers/${customerId}/policies`)
         .send({ type: 'CAR', premium: 300, startDate: '2027-01-01', endDate: '2026-01-01' });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when endDate equals startDate', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/customers/${customerId}/policies`)
+        .send({ type: 'CAR', premium: 300, startDate: '2026-06-01', endDate: '2026-06-01' });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when premium is zero', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/customers/${customerId}/policies`)
+        .send({ type: 'CAR', premium: 0, startDate: '2026-01-01', endDate: '2027-01-01' });
       expect(res.status).toBe(400);
     });
 
@@ -328,6 +363,72 @@ describe('Insurance Management API (e2e)', () => {
     it('returns 409 when restoring an already-active customer', async () => {
       const res = await request(app.getHttpServer()).patch(`/customers/${customerId}/restore`);
       expect(res.status).toBe(409);
+    });
+  });
+
+  // ─── Security ─────────────────────────────────────────────────────────────
+
+  describe('Security — injection & oversized input', () => {
+    it('rejects SQL injection attempt in nationalId', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/customers')
+        .send({ nationalId: "' OR '1'='1", firstName: 'Hack', lastName: 'Attempt' });
+      expect(res.status).toBe(400);
+    });
+
+    it('stores XSS payload as plain text without crashing (backend is not a browser)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/customers')
+        .send({
+          nationalId: '444444444',
+          firstName: '<script>alert("xss")</script>',
+          lastName: 'Test',
+        });
+      // Backend stores as plain string — XSS is a frontend concern.
+      // We verify: server does not crash (no 500) and returns the value as-is.
+      expect(res.status).toBe(201);
+      expect(res.body.firstName).toBe('<script>alert("xss")</script>');
+    });
+
+    it('rejects unknown fields (forbidNonWhitelisted)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/customers')
+        .send({ nationalId: '555555555', firstName: 'X', lastName: 'Y', extraField: 'should-fail' });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 404 (not 500) for malformed UUID in customer id', async () => {
+      const res = await request(app.getHttpServer()).get('/customers/not-a-uuid');
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 404 (not 500) for malformed UUID in policy id', async () => {
+      const res = await request(app.getHttpServer()).get('/policies/not-a-uuid');
+      expect(res.status).toBe(404);
+    });
+  });
+
+  // ─── Performance ──────────────────────────────────────────────────────────
+
+  describe('Performance — response time thresholds', () => {
+    it('GET /customers responds within 500ms', async () => {
+      const start = Date.now();
+      await request(app.getHttpServer()).get('/customers');
+      expect(Date.now() - start).toBeLessThan(500);
+    });
+
+    it('GET /policies responds within 500ms', async () => {
+      const start = Date.now();
+      await request(app.getHttpServer()).get('/policies');
+      expect(Date.now() - start).toBeLessThan(500);
+    });
+
+    it('POST /customers responds within 500ms', async () => {
+      const start = Date.now();
+      await request(app.getHttpServer())
+        .post('/customers')
+        .send({ nationalId: '666666666', firstName: 'Perf', lastName: 'Test' });
+      expect(Date.now() - start).toBeLessThan(500);
     });
   });
 });

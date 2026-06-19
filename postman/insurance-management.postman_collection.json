@@ -1,0 +1,338 @@
+{
+  "info": {
+    "name": "Insurance Management API",
+    "_postman_id": "insurance-management-api",
+    "description": "Full API collection for Insurance Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "customerId", "value": "REPLACE_AFTER_CREATE" },
+    { "key": "policyId", "value": "REPLACE_AFTER_ISSUE" },
+    { "key": "cancelledPolicyId", "value": "REPLACE_AFTER_CANCEL" }
+  ],
+  "item": [
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "01 Create Customer (Alice)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nationalId\": \"123456789\",\n  \"firstName\": \"Alice\",\n  \"lastName\": \"Cohen\",\n  \"email\": \"alice@example.com\",\n  \"phone\": \"050-1234567\"\n}"
+            }
+          }
+        },
+        {
+          "name": "02 Create Customer (Bob - no email)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nationalId\": \"987654321\",\n  \"firstName\": \"Bob\",\n  \"lastName\": \"Levi\",\n  \"phone\": \"052-9876543\"\n}"
+            }
+          }
+        },
+        {
+          "name": "03 Get All Customers",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/customers"
+          }
+        },
+        {
+          "name": "04 Get Customers (active only)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/customers?isActive=true",
+              "query": [{ "key": "isActive", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "05 Search Customers by name",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/customers?search=alice",
+              "query": [{ "key": "search", "value": "alice" }]
+            }
+          }
+        },
+        {
+          "name": "06 Get Customer by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "07 Update Customer (phone)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/customers/{{customerId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"054-0000000\"\n}"
+            }
+          }
+        },
+        {
+          "name": "08 Soft Delete Customer",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/customers/{{customerId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Policies",
+      "item": [
+        {
+          "name": "09 Issue Policy - CAR",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers/{{customerId}}/policies",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CAR\",\n  \"premium\": 300.00,\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2027-01-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "10 Issue Policy - HEALTH",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers/{{customerId}}/policies",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"HEALTH\",\n  \"premium\": 500.00,\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2027-06-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "11 Issue Policy - LIFE",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers/{{customerId}}/policies",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"LIFE\",\n  \"premium\": 150.00,\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2028-01-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "12 Get All Policies",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/policies"
+          }
+        },
+        {
+          "name": "13 Filter by type=CAR",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/policies?type=CAR",
+              "query": [{ "key": "type", "value": "CAR" }]
+            }
+          }
+        },
+        {
+          "name": "14 Filter by status=ACTIVE",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/policies?status=ACTIVE",
+              "query": [{ "key": "status", "value": "ACTIVE" }]
+            }
+          }
+        },
+        {
+          "name": "15 Filter by customerId",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/policies?customerId={{customerId}}",
+              "query": [{ "key": "customerId", "value": "{{customerId}}" }]
+            }
+          }
+        },
+        {
+          "name": "16 Filter combo (CAR + ACTIVE + customerId)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/policies?type=CAR&status=ACTIVE&customerId={{customerId}}",
+              "query": [
+                { "key": "type", "value": "CAR" },
+                { "key": "status", "value": "ACTIVE" },
+                { "key": "customerId", "value": "{{customerId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "17 Get Policy by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/policies/{{policyId}}"
+          }
+        },
+        {
+          "name": "18 Update Policy (premium + endDate)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/policies/{{policyId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"premium\": 350.00,\n  \"endDate\": \"2027-12-31\"\n}"
+            }
+          }
+        },
+        {
+          "name": "19 Cancel Policy",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/policies/{{policyId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edge Cases & Errors",
+      "item": [
+        {
+          "name": "ERR 409 - Duplicate nationalId",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nationalId\": \"123456789\",\n  \"firstName\": \"Fake\",\n  \"lastName\": \"Duplicate\"\n}"
+            }
+          }
+        },
+        {
+          "name": "ERR 400 - Invalid nationalId (not 9 digits)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nationalId\": \"123\",\n  \"firstName\": \"Bad\",\n  \"lastName\": \"Input\"\n}"
+            }
+          }
+        },
+        {
+          "name": "ERR 404 - Issue policy to missing customer",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers/00000000-0000-0000-0000-000000000000/policies",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CAR\",\n  \"premium\": 300,\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2027-01-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "ERR 400 - endDate before startDate",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers/{{customerId}}/policies",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"LIFE\",\n  \"premium\": 200,\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2026-01-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "ERR 400 - Negative premium",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers/{{customerId}}/policies",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CAR\",\n  \"premium\": -100,\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2027-01-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "ERR 400 - Invalid policy type (BOAT)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers/{{customerId}}/policies",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"BOAT\",\n  \"premium\": 300,\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2027-01-01\"\n}"
+            }
+          }
+        },
+        {
+          "name": "ERR 409 - Cancel already-cancelled policy",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/policies/{{cancelledPolicyId}}"
+          }
+        },
+        {
+          "name": "ERR 409 - Update cancelled policy",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/policies/{{cancelledPolicyId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"premium\": 999\n}"
+            }
+          }
+        },
+        {
+          "name": "ERR 409 - Delete customer with active policies",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "ERR 404 - Get non-existent customer",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/customers/00000000-0000-0000-0000-000000000000"
+          }
+        },
+        {
+          "name": "ERR 400 - Unknown field in body",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nationalId\": \"111222333\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"unknownField\": \"should be rejected\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

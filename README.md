@@ -295,3 +295,32 @@ Test coverage includes:
 **No repository layer over Prisma** — why: Prisma already *is* the repository (typed queries, migrations, relations). Wrapping it in another abstraction layer within a 5-hour scope adds boilerplate without benefit. The `PrismaService` is injected directly into services via NestJS DI — fully testable with mocks.
 
 **`status` filter applied in-memory after DB fetch** — why: EXPIRED is computed, not stored. Filtering by `status=EXPIRED` in SQL is impossible. All filters that *are* stored (`type`, `customerId`) are applied at the DB level; `status` is the only post-fetch filter.
+
+**No authentication or rate limiting** — intentionally omitted. This is a single-agent system with no public exposure — there is no concept of "who is logged in" and no multi-tenant attack surface. Adding rate limiting without auth would only limit by IP, which is weak and misleading. In a production multi-tenant system, the correct order would be: JWT auth per agent → per-user rate limiting (e.g. `@nestjs/throttler`) → role-based access control. These are the natural next layers but are out of scope for this challenge.
+
+---
+
+## Future Improvements
+
+Natural next steps to evolve this into a full production system:
+
+**Security & Access**
+- **JWT Authentication** — each agent logs in and receives a token; all endpoints require `Authorization: Bearer <token>`
+- **Role-based access control (RBAC)** — distinguish between agent, manager, and read-only roles
+- **Rate limiting** — `@nestjs/throttler` per authenticated user to prevent abuse
+
+**API Enhancements**
+- **Pagination** — `GET /policies` and `GET /customers` with `?page=&limit=` for large datasets
+- **Swagger / OpenAPI docs** — `@nestjs/swagger` auto-generates interactive API documentation from DTOs and decorators
+- **Webhook / event system** — emit events on policy cancellation or expiry (e.g. notify the agent)
+
+**Data & Business Logic**
+- **Policy renewal** — `POST /policies/:id/renew` creates a new policy from an expired one with an updated date range
+- **Claim management** — a third entity `Claim` linked to a Policy (filing, tracking, resolution)
+- **Premium history** — audit log of premium changes per policy
+- **Automated EXPIRED status** — a scheduled job (`@nestjs/schedule`) to persist EXPIRED status in DB nightly, enabling DB-level filtering without in-memory resolution
+
+**Infrastructure**
+- **Redis cache** — cache frequently read customer+policy lists to reduce DB load
+- **Observability** — structured logging (Winston/Pino) + health check endpoint (`/health`) for monitoring
+- **CI/CD pipeline** — GitHub Actions: run tests on every PR, build Docker image on merge to main

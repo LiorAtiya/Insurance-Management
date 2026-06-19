@@ -27,14 +27,12 @@ src/
     customers.service.ts
     customers.module.ts
     dto/                           # create / update / query
-    entities/customer.entity.ts
   policies/
     policies.controller.ts
     policies.service.ts
     policy-status.resolver.ts      # Pure EXPIRED computation at read-time
     policies.module.ts
     dto/                           # issue / update / query
-    entities/policy.entity.ts
 prisma/
   schema.prisma
   seed.ts

@@ -248,6 +248,18 @@ API available at `http://localhost:3000`
 
 ---
 
+### Postman Collection
+
+A ready-made Postman collection is included at `postman/insurance-management.postman_collection.json`.
+
+Import it into Postman to get all endpoints pre-configured with variables (`baseUrl`, `customerId`, `policyId`).
+
+1. Open Postman → **Import** → select the file
+2. Set `baseUrl` to `http://localhost:3000` (already set as default)
+3. Run requests in order — Create Customer first, then Issue Policy
+
+---
+
 ### Run tests
 
 ```bash
